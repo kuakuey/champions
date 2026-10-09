@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/includes/funciones.php';
 
-$partidos = listar_partidos(['orden' => 'asc']);
+$partidos = listar_partidos(['orden' => 'asc', 'pendientes' => true]);
 $tabla = tabla_posiciones();
 $goleadores = goleadores();
 
@@ -31,7 +31,7 @@ require __DIR__ . '/includes/header.php';
         </div>
         <div class="panel-cuerpo">
             <?php if ($partidos === []): ?>
-                <p class="text-secondary p-3 mb-0">Todavía no hay partidos en el calendario.</p>
+                <p class="text-secondary p-3 mb-0">No hay partidos pendientes.</p>
             <?php else: ?>
                 <div class="list-group list-group-flush">
                     <?php foreach ($partidos as $partido): ?>

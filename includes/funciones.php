@@ -413,7 +413,7 @@ function etiqueta_estado(string $estado): string
 {
     return match ($estado) {
         'programado' => 'Programado',
-        'jugado' => 'Jugado',
+        'jugado' => 'Terminado',
         'suspendido' => 'Suspendido',
         'aplazado' => 'Aplazado',
         default => $estado,
@@ -672,6 +672,9 @@ function listar_partidos(array $filtros = []): array
     }
     if (!empty($filtros['programados'])) {
         $sql .= " AND p.estado = 'programado'";
+    }
+    if (!empty($filtros['pendientes'])) {
+        $sql .= " AND p.estado <> 'jugado'";
     }
 
     $orden = (($filtros['orden'] ?? 'asc') === 'desc') ? 'DESC' : 'ASC';
@@ -1672,12 +1675,34 @@ function actualizar_marcador(int $partidoId, int $equipoGol, int $delta): void
     }
 
     ejecutar(
+        'UPDATE partidos
+         SET goles_local = COALESCE(goles_local, 0) + :mas_local,
+             goles_visitante = COALESCE(goles_visitante, 0) + :mas_visita
+         WHERE id = :id',
+        ['mas_local' => $masLocal, 'mas_visita' => $masVisita, 'id' => $partidoId]
+    );
+}
+
+function terminar_partido(int $partidoId): void
+{
+    $partido = obtener_partido($partidoId);
+    if ($partido === null) {
+        throw new RuntimeException('No encontramos ese partido.');
+    }
+    if ((string) $partido['estado'] === 'jugado') {
+        return;
+    }
+    if (in_array((string) $partido['estado'], ['suspendido', 'aplazado'], true)) {
+        throw new RuntimeException('Ese partido está ' . etiqueta_estado((string) $partido['estado']) . ' y no se puede terminar.');
+    }
+
+    ejecutar(
         "UPDATE partidos
          SET estado = 'jugado',
-             goles_local = COALESCE(goles_local, 0) + :mas_local,
-             goles_visitante = COALESCE(goles_visitante, 0) + :mas_visita
+             goles_local = COALESCE(goles_local, 0),
+             goles_visitante = COALESCE(goles_visitante, 0)
          WHERE id = :id",
-        ['mas_local' => $masLocal, 'mas_visita' => $masVisita, 'id' => $partidoId]
+        ['id' => $partidoId]
     );
 }
 
@@ -1761,20 +1786,6 @@ function quitar_evento(int $eventoId, int $partidoId): string
         }
         if ($jugadorId > 0 && ($tipo === 'amarilla' || $tipo === 'roja')) {
             sincronizar_tarjetas($jugadorId, $partidoId, $tipo);
-        }
-        $quedan = consultar_uno(
-            'SELECT COUNT(*) AS total FROM eventos WHERE partido_id = :partido',
-            ['partido' => $partidoId]
-        );
-        $actual = obtener_partido($partidoId);
-        if ((int) ($quedan['total'] ?? 0) === 0 && $actual !== null
-            && (int) $actual['goles_local'] === 0 && (int) $actual['goles_visitante'] === 0) {
-            ejecutar(
-                "UPDATE partidos
-                 SET estado = 'programado', goles_local = NULL, goles_visitante = NULL
-                 WHERE id = :id",
-                ['id' => $partidoId]
-            );
         }
         recalcular_sanciones();
     });

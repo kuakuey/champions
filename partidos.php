@@ -94,9 +94,17 @@ require __DIR__ . '/includes/header.php';
                     </button>
                     <div class="min-w-0">
                         <div class="fw-semibold text-truncate"><?= e((string) $partido['local_nombre']) ?> vs <?= e((string) $partido['visita_nombre']) ?></div>
-                        <span class="badge <?= $partido['tipo'] === 'eliminatoria' ? 'text-bg-dark' : 'text-bg-success' ?>">
-                            <?= $partido['tipo'] === 'eliminatoria' ? 'Eliminatoria' : 'Clasificatoria' ?>
-                        </span>
+                        <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                            <span class="badge <?= $partido['tipo'] === 'eliminatoria' ? 'text-bg-dark' : 'text-bg-success' ?>">
+                                <?= $partido['tipo'] === 'eliminatoria' ? 'Eliminatoria' : 'Clasificatoria' ?>
+                            </span>
+                            <?php if ((string) $partido['estado'] === 'jugado'): ?>
+                                <span class="badge text-bg-success">Jugado</span>
+                                <span class="small fw-semibold"><?= e(marcador_texto($partido)) ?></span>
+                            <?php else: ?>
+                                <span class="badge text-bg-secondary">Por jugar</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="d-flex gap-2 flex-shrink-0">
                         <a class="btn btn-sm btn-success" href="<?= e(url_public('partido.php?id=' . (int) $partido['id'])) ?>" aria-label="Abrir partido" title="Abrir" draggable="false"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>

@@ -13,6 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $partidoId = entero_post('partido_id', 1, 1000000) ?? $partidoId;
     try {
         $accion = (string) ($_POST['accion'] ?? '');
+        if ($accion === 'terminar') {
+            terminar_partido($partidoId);
+            poner_aviso('success', 'Partido terminado. La tabla de puntajes ya incluye el resultado.');
+            redirigir(url_public('index.php'));
+        }
         if ($accion === 'quitar') {
             $mensaje = quitar_evento(entero_post('evento_id', 1, 1000000) ?? 0, $partidoId);
         } elseif ($accion === 'agregar') {
@@ -93,6 +98,14 @@ $nombreEvento = static function (array $evento): string {
                 </div>
             </div>
         </div>
+        <?php if ((string) $partido['estado'] !== 'jugado'): ?>
+            <form method="post" class="mt-4" onsubmit="return confirm('¿Terminar este partido? Saldrá del orden y el resultado quedará en la tabla.');">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="terminar">
+                <input type="hidden" name="partido_id" value="<?= (int) $partido['id'] ?>">
+                <button class="btn btn-success w-100" type="submit">Terminar partido</button>
+            </form>
+        <?php endif; ?>
         <ul class="list-unstyled small text-secondary mt-4 mb-0">
             <li><i class="bi bi-geo-alt me-1" aria-hidden="true"></i><?= e((string) ($partido['cancha'] ?? 'Cancha por confirmar')) ?></li>
             <li><i class="bi bi-person-badge me-1" aria-hidden="true"></i>Árbitro: <?= e((string) ($partido['arbitro'] ?? 'Por designar')) ?></li>
