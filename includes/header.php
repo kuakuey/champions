@@ -201,9 +201,22 @@ $tituloCompleto = $titulo === LIGA_NOMBRE ? LIGA_NOMBRE : $titulo . ' · ' . LIG
             justify-content: space-between;
             gap: .5rem;
         }
+        .panel-titulo h1,
         .panel-titulo h2 {
             margin: 0;
             font-size: inherit;
+        }
+        .interruptor-refresh .form-check-input {
+            cursor: pointer;
+        }
+        .interruptor-refresh .form-check-input:checked {
+            background-color: #198754;
+            border-color: #198754;
+        }
+        .interruptor-refresh .form-check-label {
+            cursor: pointer;
+            font-size: .95rem;
+            font-weight: 600;
         }
         .panel-contraer {
             border: 0;

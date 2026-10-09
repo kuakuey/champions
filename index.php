@@ -22,7 +22,13 @@ require __DIR__ . '/includes/header.php';
 ?>
 <div class="rejilla-inicio">
     <section class="panel" aria-labelledby="titulo-partidos">
-        <h1 class="panel-titulo" id="titulo-partidos">Orden de partidos</h1>
+        <div class="panel-titulo">
+            <h1 id="titulo-partidos">Orden de partidos</h1>
+            <div class="form-check form-switch mb-0 flex-shrink-0 interruptor-refresh">
+                <input class="form-check-input" type="checkbox" role="switch" id="refresh">
+                <label class="form-check-label" for="refresh">refresh</label>
+            </div>
+        </div>
         <div class="panel-cuerpo">
             <?php if ($partidos === []): ?>
                 <p class="text-secondary p-3 mb-0">Todavía no hay partidos en el calendario.</p>
@@ -188,6 +194,39 @@ require __DIR__ . '/includes/header.php';
                     localStorage.setItem(clave, contraido ? '1' : '0');
                 } catch (error) {}
             });
+        });
+    })();
+    (function () {
+        var interruptor = document.getElementById('refresh');
+        if (!interruptor) {
+            return;
+        }
+        var espera = null;
+
+        function programar() {
+            if (espera !== null) {
+                clearTimeout(espera);
+                espera = null;
+            }
+            if (!interruptor.checked) {
+                return;
+            }
+            espera = setTimeout(function () {
+                window.location.reload();
+            }, 30000);
+        }
+
+        var activo = false;
+        try {
+            activo = localStorage.getItem('refresh') === '1';
+        } catch (error) {}
+        interruptor.checked = activo;
+        programar();
+        interruptor.addEventListener('change', function () {
+            try {
+                localStorage.setItem('refresh', interruptor.checked ? '1' : '0');
+            } catch (error) {}
+            programar();
         });
     })();
 </script>
