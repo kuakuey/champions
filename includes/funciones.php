@@ -1350,6 +1350,39 @@ function listar_grupos(): array
     return consultar('SELECT id, nombre FROM grupos ORDER BY nombre ASC');
 }
 
+/**
+ * Deja listos Sin asignación y GRUPO 1 a GRUPO 4.
+ */
+function asegurar_grupos_base(int $cantidad = 4): void
+{
+    asegurar_grupo(GRUPO_SIN_ASIGNAR);
+    $cantidad = max(1, min($cantidad, 24));
+    for ($numero = 1; $numero <= $cantidad; $numero++) {
+        asegurar_grupo('GRUPO ' . $numero);
+    }
+}
+
+/**
+ * Crea el siguiente GRUPO N y devuelve su nombre.
+ */
+function agregar_grupo(): string
+{
+    $maximo = 0;
+    foreach (listar_grupos() as $fila) {
+        if (preg_match('/^GRUPO\s+(\d+)$/i', (string) $fila['nombre'], $coincidencia) === 1) {
+            $maximo = max($maximo, (int) $coincidencia[1]);
+        }
+    }
+    $siguiente = $maximo + 1;
+    if ($siguiente > 24) {
+        throw new RuntimeException('Ya no se pueden agregar más grupos.');
+    }
+    $nombre = 'GRUPO ' . $siguiente;
+    asegurar_grupo($nombre);
+
+    return $nombre;
+}
+
 function crear_equipo(string $nombre, string $corto, string $grupo): int
 {
     $nombre = texto_limpio($nombre, 120, 'El nombre del equipo');

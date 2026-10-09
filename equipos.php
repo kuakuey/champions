@@ -72,6 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             poner_aviso('success', 'Se vaciaron equipos, personas, partidos, goles y tarjetas.');
             redirigir(url_public('equipos.php'));
         }
+        if ($accion === 'agregar-grupo') {
+            $nombre = agregar_grupo();
+            poner_aviso('success', $nombre . ' quedó listo.');
+            redirigir(url_public('equipos.php'));
+        }
         if ($accion === 'crear') {
             $nuevo = crear_equipo(
                 (string) ($_POST['nombre'] ?? ''),
@@ -305,7 +310,7 @@ if ($equipo !== null) {
     exit;
 }
 
-asegurar_grupo(GRUPO_SIN_ASIGNAR);
+asegurar_grupos_base();
 $equipos = listar_equipos(false);
 $grupos = listar_grupos();
 $sinAsignar = [];
@@ -350,40 +355,44 @@ uksort($bloques, static function (string $a, string $b): int {
         </form>
     </div>
 <?php endif; ?>
-<?php if ($sinAsignar === [] && $bloques === []): ?>
-    <p class="text-secondary">Todavía no hay equipos.</p>
-<?php else: ?>
-    <div class="sorteo-equipos">
-        <div class="card">
-            <div class="card-header fw-semibold"><?= e(GRUPO_SIN_ASIGNAR) ?></div>
-            <div class="list-group list-group-flush zona-grupo" data-grupo="<?= e(GRUPO_SIN_ASIGNAR) ?>">
-                <?php foreach ($sinAsignar as $club): ?>
-                    <?php fila_equipo($club); ?>
-                <?php endforeach; ?>
-                <p class="text-secondary small px-3 py-3 mb-0 zona-vacia<?= $sinAsignar === [] ? '' : ' d-none' ?>">Suelta un equipo aquí.</p>
-            </div>
-        </div>
-        <div>
-            <?php if ($bloques !== []): ?>
-                <div class="row row-cols-1 row-cols-md-2 g-3">
-                    <?php foreach ($bloques as $nombreGrupo => $clubes): ?>
-                        <div class="col">
-                            <div class="card h-100">
-                                <div class="card-header fw-semibold"><?= e($nombreGrupo) ?></div>
-                                <div class="list-group list-group-flush zona-grupo" data-grupo="<?= e($nombreGrupo) ?>">
-                                    <?php foreach ($clubes as $club): ?>
-                                        <?php fila_equipo($club); ?>
-                                    <?php endforeach; ?>
-                                    <p class="text-secondary small px-3 py-3 mb-0 zona-vacia<?= $clubes === [] ? '' : ' d-none' ?>">Suelta un equipo aquí.</p>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+<div class="sorteo-equipos">
+    <div class="card">
+        <div class="card-header fw-semibold"><?= e(GRUPO_SIN_ASIGNAR) ?></div>
+        <div class="list-group list-group-flush zona-grupo" data-grupo="<?= e(GRUPO_SIN_ASIGNAR) ?>">
+            <?php foreach ($sinAsignar as $club): ?>
+                <?php fila_equipo($club); ?>
+            <?php endforeach; ?>
+            <p class="text-secondary small px-3 py-3 mb-0 zona-vacia<?= $sinAsignar === [] ? '' : ' d-none' ?>">Suelta un equipo aquí.</p>
         </div>
     </div>
-<?php endif; ?>
+    <div>
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            <?php foreach ($bloques as $nombreGrupo => $clubes): ?>
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="card-header fw-semibold"><?= e($nombreGrupo) ?></div>
+                        <div class="list-group list-group-flush zona-grupo" data-grupo="<?= e($nombreGrupo) ?>">
+                            <?php foreach ($clubes as $club): ?>
+                                <?php fila_equipo($club); ?>
+                            <?php endforeach; ?>
+                            <p class="text-secondary small px-3 py-3 mb-0 zona-vacia<?= $clubes === [] ? '' : ' d-none' ?>">Suelta un equipo aquí.</p>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+            <div class="col">
+                <form method="post" class="h-100" onsubmit="var boton=this.querySelector('button'); if (boton.disabled) { return false; } boton.disabled=true;">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="agregar-grupo">
+                    <button class="btn btn-outline-success w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-2 py-4" type="submit">
+                        <i class="bi bi-plus-lg fs-3" aria-hidden="true"></i>
+                        <span>Agregar grupo</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="modal-equipo" tabindex="-1" aria-labelledby="modal-equipo-titulo" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
         <form method="post" class="modal-content">
