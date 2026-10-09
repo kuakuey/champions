@@ -21,6 +21,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP VIEW IF EXISTS v_asistidores;
 DROP VIEW IF EXISTS v_goleadores;
 DROP VIEW IF EXISTS v_tabla;
+DROP TABLE IF EXISTS cuadro_llave;
+DROP TABLE IF EXISTS cuadro_puesto;
 DROP TABLE IF EXISTS eventos;
 DROP TABLE IF EXISTS sanciones;
 DROP TABLE IF EXISTS partidos;
@@ -123,6 +125,29 @@ CREATE TABLE partidos (
   CONSTRAINT fk_partidos_visitante
     FOREIGN KEY (visitante_id) REFERENCES equipos (id)
     ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Cuadro de la final: 8 equipos.
+-- Puestos 1 a 8 arman los cuartos. Llaves 1 a 4 son cuartos,
+-- 5 y 6 la semifinal y 7 la final.
+-- ------------------------------------------------------------
+CREATE TABLE cuadro_puesto (
+  puesto TINYINT UNSIGNED NOT NULL,
+  equipo_id INT UNSIGNED DEFAULT NULL,
+  PRIMARY KEY (puesto),
+  CONSTRAINT fk_cuadro_puesto_equipo
+    FOREIGN KEY (equipo_id) REFERENCES equipos (id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE cuadro_llave (
+  llave TINYINT UNSIGNED NOT NULL,
+  partido_id INT UNSIGNED DEFAULT NULL,
+  PRIMARY KEY (llave),
+  CONSTRAINT fk_cuadro_llave_partido
+    FOREIGN KEY (partido_id) REFERENCES partidos (id)
+    ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

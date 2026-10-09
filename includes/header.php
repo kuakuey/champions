@@ -433,6 +433,7 @@ $tituloCompleto = $titulo === LIGA_NOMBRE ? LIGA_NOMBRE : $titulo . ' · ' . LIG
         <div class="d-none d-md-flex align-items-center gap-2 ms-auto">
             <a class="btn btn-sm <?= ($pagina ?? '') === 'equipos' ? 'btn-light' : 'btn-outline-light' ?>" href="<?= e(url_public('equipos.php')) ?>">Equipos</a>
             <a class="btn btn-sm <?= ($pagina ?? '') === 'partidos' ? 'btn-light' : 'btn-outline-light' ?>" href="<?= e(url_public('partidos.php')) ?>">Partidos</a>
+            <a class="btn btn-sm <?= ($pagina ?? '') === 'final' ? 'btn-light' : 'btn-outline-light' ?>" href="<?= e(url_public('final.php')) ?>">Final</a>
             <button class="btn btn-outline-light btn-sm" type="button" data-tema aria-label="Cambiar tema claro u oscuro">
                 <i class="bi bi-moon-fill icono-tema" aria-hidden="true"></i>
             </button>
@@ -454,6 +455,10 @@ $tituloCompleto = $titulo === LIGA_NOMBRE ? LIGA_NOMBRE : $titulo . ' · ' . LIG
     <a class="<?= ($pagina ?? '') === 'partidos' ? 'activo' : '' ?>" href="<?= e(url_public('partidos.php')) ?>">
         <i class="bi bi-calendar-event" aria-hidden="true"></i>
         <span>Partidos</span>
+    </a>
+    <a class="<?= ($pagina ?? '') === 'final' ? 'activo' : '' ?>" href="<?= e(url_public('final.php')) ?>">
+        <i class="bi bi-trophy" aria-hidden="true"></i>
+        <span>Final</span>
     </a>
 </nav>
 <main class="<?= ($contenedor ?? '') === 'fluid' ? 'container-fluid' : 'container' ?> py-4">

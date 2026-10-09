@@ -721,6 +721,179 @@ function crear_partido(int $localId, int $visitaId, string $tipo): int
     return (int) db()->lastInsertId();
 }
 
+function asegurar_cuadro(): void
+{
+    db()->exec(
+        'CREATE TABLE IF NOT EXISTS cuadro_puesto (
+            puesto TINYINT UNSIGNED NOT NULL,
+            equipo_id INT UNSIGNED DEFAULT NULL,
+            PRIMARY KEY (puesto),
+            CONSTRAINT fk_cuadro_puesto_equipo
+                FOREIGN KEY (equipo_id) REFERENCES equipos (id)
+                ON DELETE SET NULL ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+    db()->exec(
+        'CREATE TABLE IF NOT EXISTS cuadro_llave (
+            llave TINYINT UNSIGNED NOT NULL,
+            partido_id INT UNSIGNED DEFAULT NULL,
+            PRIMARY KEY (llave),
+            CONSTRAINT fk_cuadro_llave_partido
+                FOREIGN KEY (partido_id) REFERENCES partidos (id)
+                ON DELETE SET NULL ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+    for ($puesto = 1; $puesto <= 8; $puesto++) {
+        ejecutar('INSERT IGNORE INTO cuadro_puesto (puesto) VALUES (:puesto)', ['puesto' => $puesto]);
+    }
+    for ($llave = 1; $llave <= 7; $llave++) {
+        ejecutar('INSERT IGNORE INTO cuadro_llave (llave) VALUES (:llave)', ['llave' => $llave]);
+    }
+}
+
+/**
+ * @return array<int, int|null>
+ */
+function puestos_cuadro(): array
+{
+    asegurar_cuadro();
+    $puestos = array_fill(1, 8, null);
+    foreach (consultar('SELECT puesto, equipo_id FROM cuadro_puesto') as $fila) {
+        $puestos[(int) $fila['puesto']] = $fila['equipo_id'] === null ? null : (int) $fila['equipo_id'];
+    }
+
+    return $puestos;
+}
+
+function ganador_partido(array $partido): ?int
+{
+    if ((string) ($partido['estado'] ?? '') !== 'jugado') {
+        return null;
+    }
+    $local = $partido['goles_local'];
+    $visita = $partido['goles_visitante'];
+    if ($local === null || $visita === null || (int) $local === (int) $visita) {
+        return null;
+    }
+
+    return (int) $local > (int) $visita ? (int) $partido['local_id'] : (int) $partido['visitante_id'];
+}
+
+/**
+ * @return array<int, array<string, mixed>|null>
+ */
+function partidos_cuadro(): array
+{
+    asegurar_cuadro();
+    $partidos = array_fill(1, 7, null);
+    $filas = consultar(
+        'SELECT llave, partido_id FROM cuadro_llave ORDER BY llave ASC'
+    );
+    foreach ($filas as $fila) {
+        $id = $fila['partido_id'] === null ? 0 : (int) $fila['partido_id'];
+        $partidos[(int) $fila['llave']] = $id > 0 ? obtener_partido($id) : null;
+    }
+
+    return $partidos;
+}
+
+function colocar_llave(int $llave, ?int $localId, ?int $visitaId): void
+{
+    if ($localId === null || $visitaId === null || $localId < 1 || $visitaId < 1 || $localId === $visitaId) {
+        return;
+    }
+    $fila = consultar_uno('SELECT partido_id FROM cuadro_llave WHERE llave = :llave', ['llave' => $llave]);
+    $partidoId = $fila === null || $fila['partido_id'] === null ? 0 : (int) $fila['partido_id'];
+    $partido = $partidoId > 0 ? obtener_partido($partidoId) : null;
+    if ($partido === null) {
+        $nuevo = crear_partido($localId, $visitaId, 'eliminatoria');
+        ejecutar(
+            'UPDATE cuadro_llave SET partido_id = :partido WHERE llave = :llave',
+            ['partido' => $nuevo, 'llave' => $llave]
+        );
+
+        return;
+    }
+    if ((string) $partido['estado'] === 'jugado') {
+        return;
+    }
+    if ((int) $partido['local_id'] === $localId && (int) $partido['visitante_id'] === $visitaId) {
+        return;
+    }
+    ejecutar(
+        'UPDATE partidos SET local_id = :local, visitante_id = :visita WHERE id = :id',
+        ['local' => $localId, 'visita' => $visitaId, 'id' => (int) $partido['id']]
+    );
+}
+
+function sincronizar_cuadro(): void
+{
+    asegurar_cuadro();
+    $puestos = puestos_cuadro();
+    colocar_llave(1, $puestos[1], $puestos[2]);
+    colocar_llave(2, $puestos[3], $puestos[4]);
+    colocar_llave(3, $puestos[5], $puestos[6]);
+    colocar_llave(4, $puestos[7], $puestos[8]);
+
+    $partidos = partidos_cuadro();
+    $ganador = static function (int $llave) use ($partidos): ?int {
+        $partido = $partidos[$llave] ?? null;
+
+        return is_array($partido) ? ganador_partido($partido) : null;
+    };
+    colocar_llave(5, $ganador(1), $ganador(2));
+    colocar_llave(6, $ganador(3), $ganador(4));
+    $partidos = partidos_cuadro();
+    $semi = static function (int $llave) use ($partidos): ?int {
+        $partido = $partidos[$llave] ?? null;
+
+        return is_array($partido) ? ganador_partido($partido) : null;
+    };
+    colocar_llave(7, $semi(5), $semi(6));
+}
+
+/**
+ * @param array<int, int> $puestos
+ */
+function guardar_puestos_cuadro(array $puestos): void
+{
+    asegurar_cuadro();
+    if (count($puestos) !== 8) {
+        throw new RuntimeException('La final es de 8 equipos.');
+    }
+    $ids = [];
+    foreach ($puestos as $puesto => $equipoId) {
+        if ($puesto < 1 || $puesto > 8 || $equipoId < 1 || obtener_equipo($equipoId) === null) {
+            throw new RuntimeException('Elige los 8 equipos de la final.');
+        }
+        if (in_array($equipoId, $ids, true)) {
+            throw new RuntimeException('Cada equipo entra una sola vez en la final.');
+        }
+        $ids[] = $equipoId;
+    }
+
+    $actuales = puestos_cuadro();
+    $partidos = partidos_cuadro();
+    $cruces = [[1, 1, 2], [2, 3, 4], [3, 5, 6], [4, 7, 8]];
+    foreach ($cruces as [$llave, $izquierda, $derecha]) {
+        $partido = $partidos[$llave] ?? null;
+        if (!is_array($partido) || (string) $partido['estado'] !== 'jugado') {
+            continue;
+        }
+        if ($actuales[$izquierda] !== $puestos[$izquierda] || $actuales[$derecha] !== $puestos[$derecha]) {
+            throw new RuntimeException('Ese cruce ya se jugó.');
+        }
+    }
+
+    foreach ($puestos as $puesto => $equipoId) {
+        ejecutar(
+            'UPDATE cuadro_puesto SET equipo_id = :equipo WHERE puesto = :puesto',
+            ['equipo' => $equipoId, 'puesto' => $puesto]
+        );
+    }
+    sincronizar_cuadro();
+}
+
 function guardar_orden_partidos(array $ids): void
 {
     $ids = array_values(array_filter(array_map('intval', $ids), static fn (int $id): bool => $id > 0));
