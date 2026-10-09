@@ -931,6 +931,60 @@ function guardar_puestos_cuadro(array $puestos): void
     sincronizar_cuadro();
 }
 
+function sortear_cuadro(): void
+{
+    asegurar_cuadro();
+    $ids = [];
+    foreach (clasificados_por_grupo() as $filas) {
+        foreach ($filas as $fila) {
+            $id = (int) $fila['equipo_id'];
+            if ($id > 0) {
+                $ids[$id] = $id;
+            }
+        }
+    }
+    if ($ids === []) {
+        throw new RuntimeException('Todavía no hay clasificados para sortear.');
+    }
+
+    $puestos = puestos_cuadro();
+    $partidos = partidos_cuadro();
+    $fijos = [];
+    $abiertos = [];
+    for ($puesto = 1; $puesto <= 8; $puesto++) {
+        $partido = $partidos[(int) ceil($puesto / 2)] ?? null;
+        $jugado = is_array($partido) && (string) $partido['estado'] === 'jugado';
+        if ($jugado) {
+            if ($puestos[$puesto] !== null) {
+                $fijos[(int) $puestos[$puesto]] = true;
+            }
+            continue;
+        }
+        $abiertos[] = $puesto;
+    }
+    if ($abiertos === []) {
+        throw new RuntimeException('Los cuartos ya se jugaron.');
+    }
+
+    $libres = array_values(array_filter($ids, static fn (int $id): bool => !isset($fijos[$id])));
+    shuffle($libres);
+
+    transaccion(static function () use ($abiertos, $libres): void {
+        foreach ($abiertos as $indice => $puesto) {
+            $equipo = $libres[$indice] ?? null;
+            if ($equipo === null) {
+                ejecutar('UPDATE cuadro_puesto SET equipo_id = NULL WHERE puesto = :puesto', ['puesto' => $puesto]);
+                continue;
+            }
+            ejecutar(
+                'UPDATE cuadro_puesto SET equipo_id = :equipo WHERE puesto = :puesto',
+                ['equipo' => $equipo, 'puesto' => $puesto]
+            );
+        }
+        sincronizar_cuadro();
+    });
+}
+
 function mover_equipo_cuadro(int $equipoId, int $puesto): void
 {
     asegurar_cuadro();

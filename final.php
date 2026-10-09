@@ -19,6 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ajax = (string) ($_POST['ajax'] ?? '') === '1';
     try {
         $accion = (string) ($_POST['accion'] ?? '');
+        if ($accion === 'sortear') {
+            sortear_cuadro();
+            poner_aviso('success', 'Cuartos repartidos al azar.');
+            redirigir(url_public('final.php'));
+        }
         if ($accion !== 'colocar') {
             throw new RuntimeException('Acción no reconocida.');
         }
@@ -162,7 +167,14 @@ $ficha = static function (array $fila, bool $cerrado): void {
     </section>
 
     <section>
-        <h2 class="h5 mb-3">Cuartos de final</h2>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h5 mb-0">Cuartos de final</h2>
+            <form method="post" onsubmit="return confirm('¿Repartir los cuartos al azar?');">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="sortear">
+                <button class="btn btn-success" type="submit">Al azar</button>
+            </form>
+        </div>
         <div class="row g-3">
             <?php for ($cruce = 1; $cruce <= 4; $cruce++): ?>
                 <?php
