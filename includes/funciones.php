@@ -797,14 +797,51 @@ function partidos_cuadro(): array
     return $partidos;
 }
 
+/**
+ * Los dos primeros de cada grupo, en el orden de la tabla.
+ *
+ * @return array<string, list<array<string, mixed>>>
+ */
+function clasificados_por_grupo(): array
+{
+    $porGrupo = [];
+    foreach (tabla_posiciones() as $fila) {
+        $nombre = (string) ($fila['grupo'] ?? '');
+        if ($nombre === '' || $nombre === GRUPO_SIN_ASIGNAR || (int) $fila['posicion'] > 2) {
+            continue;
+        }
+        $porGrupo[$nombre][] = $fila;
+    }
+    $nombres = [];
+    foreach (listar_grupos() as $grupo) {
+        $nombre = (string) $grupo['nombre'];
+        if ($nombre !== '' && $nombre !== GRUPO_SIN_ASIGNAR) {
+            $nombres[] = $nombre;
+        }
+    }
+    natcasesort($nombres);
+    $salida = [];
+    foreach ($nombres as $nombre) {
+        $salida[$nombre] = $porGrupo[$nombre] ?? [];
+    }
+
+    return $salida;
+}
+
 function colocar_llave(int $llave, ?int $localId, ?int $visitaId): void
 {
-    if ($localId === null || $visitaId === null || $localId < 1 || $visitaId < 1 || $localId === $visitaId) {
-        return;
-    }
     $fila = consultar_uno('SELECT partido_id FROM cuadro_llave WHERE llave = :llave', ['llave' => $llave]);
     $partidoId = $fila === null || $fila['partido_id'] === null ? 0 : (int) $fila['partido_id'];
     $partido = $partidoId > 0 ? obtener_partido($partidoId) : null;
+    $incompleto = $localId === null || $visitaId === null || $localId < 1 || $visitaId < 1 || $localId === $visitaId;
+    if ($incompleto) {
+        if ($partido !== null && (string) $partido['estado'] !== 'jugado') {
+            ejecutar('UPDATE cuadro_llave SET partido_id = NULL WHERE llave = :llave', ['llave' => $llave]);
+            ejecutar('DELETE FROM partidos WHERE id = :id AND estado <> \'jugado\'', ['id' => $partidoId]);
+        }
+
+        return;
+    }
     if ($partido === null) {
         $nuevo = crear_partido($localId, $visitaId, 'eliminatoria');
         ejecutar(
@@ -886,6 +923,59 @@ function guardar_puestos_cuadro(array $puestos): void
     }
 
     foreach ($puestos as $puesto => $equipoId) {
+        ejecutar(
+            'UPDATE cuadro_puesto SET equipo_id = :equipo WHERE puesto = :puesto',
+            ['equipo' => $equipoId, 'puesto' => $puesto]
+        );
+    }
+    sincronizar_cuadro();
+}
+
+function mover_equipo_cuadro(int $equipoId, int $puesto): void
+{
+    asegurar_cuadro();
+    if ($puesto < 0 || $puesto > 8 || obtener_equipo($equipoId) === null) {
+        throw new RuntimeException('No encontramos ese equipo.');
+    }
+    $puestos = puestos_cuadro();
+    $partidos = partidos_cuadro();
+    $cerrada = static function (int $numero) use ($partidos): bool {
+        if ($numero < 1) {
+            return false;
+        }
+        $partido = $partidos[(int) ceil($numero / 2)] ?? null;
+
+        return is_array($partido) && (string) $partido['estado'] === 'jugado';
+    };
+    $actual = 0;
+    foreach ($puestos as $numero => $id) {
+        if ($id === $equipoId) {
+            $actual = (int) $numero;
+        }
+    }
+    if ($actual === $puesto) {
+        return;
+    }
+    if (($actual > 0 && $cerrada($actual)) || ($puesto > 0 && $cerrada($puesto))) {
+        throw new RuntimeException('Ese cruce ya se jugó.');
+    }
+    if ($puesto > 0 && $actual === 0) {
+        $permitido = false;
+        foreach (clasificados_por_grupo() as $filas) {
+            foreach ($filas as $fila) {
+                if ((int) $fila['equipo_id'] === $equipoId) {
+                    $permitido = true;
+                }
+            }
+        }
+        if (!$permitido) {
+            throw new RuntimeException('Solo entran los dos primeros de cada grupo.');
+        }
+    }
+    if ($actual > 0) {
+        ejecutar('UPDATE cuadro_puesto SET equipo_id = NULL WHERE puesto = :puesto', ['puesto' => $actual]);
+    }
+    if ($puesto > 0) {
         ejecutar(
             'UPDATE cuadro_puesto SET equipo_id = :equipo WHERE puesto = :puesto',
             ['equipo' => $equipoId, 'puesto' => $puesto]

@@ -312,8 +312,14 @@ $tituloCompleto = $titulo === LIGA_NOMBRE ? LIGA_NOMBRE : $titulo . ' · ' . LIG
         .zona-grupo {
             min-height: 3.25rem;
         }
-        .zona-grupo.soltando {
+        .zona-grupo.soltando,
+        .zona-cuadro.soltando {
             background: rgba(25, 135, 84, .12);
+        }
+        .zona-puesto {
+            min-height: 3.25rem;
+            border: 1px dashed rgba(25, 135, 84, .45);
+            border-radius: .5rem;
         }
         .sorteo-equipos {
             display: grid;
