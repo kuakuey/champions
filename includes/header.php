@@ -245,6 +245,9 @@ $tituloCompleto = $titulo === LIGA_NOMBRE ? LIGA_NOMBRE : $titulo . ' · ' . LIG
         .grupo-tabla + .grupo-tabla {
             border-top: 1px solid var(--bs-border-color);
         }
+        .partido-jugado {
+            opacity: .5;
+        }
         .fila-partido .lado {
             flex: 1 1 0;
             min-width: 0;
