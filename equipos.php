@@ -113,6 +113,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             poner_aviso('success', 'Equipo movido.');
             redirigir(url_public('equipos.php'));
         }
+        if ($accion === 'eliminar-equipo') {
+            eliminar_equipo(entero_post('equipo_id', 1, 1000000) ?? 0);
+            poner_aviso('success', 'Equipo eliminado.');
+            redirigir(url_public('equipos.php'));
+        }
         if ($accion === 'jugador' || $accion === 'editar' || $accion === 'quitar') {
             if ($volver < 1) {
                 throw new RuntimeException('Elige un equipo.');
@@ -187,7 +192,15 @@ if ($equipo !== null) {
     $conteos = contar_jugadores_equipos();
     ?>
     <p class="mb-2"><a href="<?= e(url_public('equipos.php')) ?>">Volver a equipos</a></p>
-    <h1 class="h3 mb-1"><?= e((string) $equipo['nombre']) ?></h1>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+        <h1 class="h3 mb-0"><?= e((string) $equipo['nombre']) ?></h1>
+        <form method="post" onsubmit="return confirm('¿Eliminar este equipo, sus jugadores y sus partidos?');">
+            <?= campo_csrf() ?>
+            <input type="hidden" name="accion" value="eliminar-equipo">
+            <input type="hidden" name="equipo_id" value="<?= (int) $equipo['id'] ?>">
+            <button class="btn btn-outline-danger" type="submit">Eliminar equipo</button>
+        </form>
+    </div>
     <p class="text-secondary mb-3"><?= e((string) $equipo['nombre_corto']) ?><?php if (!empty($equipo['grupo'])): ?> · <?= e((string) $equipo['grupo']) ?><?php endif; ?></p>
     <div class="mb-4" aria-label="Jugadores por equipo">
         <p class="fw-semibold mb-2">Jugadores por equipo</p>

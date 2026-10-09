@@ -1558,6 +1558,22 @@ function actualizar_jugador(int $jugadorId, int $equipoId, string $nombre, ?int 
     );
 }
 
+function eliminar_equipo(int $equipoId): void
+{
+    if (obtener_equipo($equipoId) === null) {
+        throw new RuntimeException('No encontramos ese equipo.');
+    }
+
+    transaccion(static function () use ($equipoId): void {
+        ejecutar(
+            'DELETE FROM partidos WHERE local_id = :local OR visitante_id = :visita',
+            ['local' => $equipoId, 'visita' => $equipoId]
+        );
+        ejecutar('DELETE FROM eventos WHERE equipo_id = :equipo', ['equipo' => $equipoId]);
+        ejecutar('DELETE FROM equipos WHERE id = :id', ['id' => $equipoId]);
+    });
+}
+
 function quitar_jugador(int $jugadorId, int $equipoId): void
 {
     $jugador = obtener_jugador($jugadorId);
