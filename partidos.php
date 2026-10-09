@@ -88,7 +88,10 @@ require __DIR__ . '/includes/header.php';
     <div class="card">
         <div class="list-group list-group-flush" id="lista-partidos">
             <?php foreach ($partidos as $partido): ?>
-                <div class="list-group-item partido-arrastrable d-flex justify-content-between align-items-center gap-3" draggable="true" data-id="<?= (int) $partido['id'] ?>">
+                <div class="list-group-item partido-arrastrable d-flex justify-content-between align-items-center gap-2" draggable="true" data-id="<?= (int) $partido['id'] ?>">
+                    <button class="agarre" type="button" draggable="false" aria-label="Mover partido">
+                        <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+                    </button>
                     <div class="min-w-0">
                         <div class="fw-semibold text-truncate"><?= e((string) $partido['local_nombre']) ?> vs <?= e((string) $partido['visita_nombre']) ?></div>
                         <span class="badge <?= $partido['tipo'] === 'eliminatoria' ? 'text-bg-dark' : 'text-bg-success' ?>">
@@ -110,7 +113,7 @@ require __DIR__ . '/includes/header.php';
     </div>
 <?php endif; ?>
 <div class="modal fade" id="modal-partido" tabindex="-1" aria-labelledby="modal-partido-titulo" aria-hidden="true">
-    <div class="modal-dialog">
+        <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
         <form method="post" class="modal-content">
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="crear">
@@ -213,6 +216,102 @@ require __DIR__ . '/includes/header.php';
                     window.alert('No se pudo guardar el orden.');
                     window.location.reload();
                 });
+        });
+
+        function guardarOrden() {
+            var ids = Array.prototype.map.call(lista.querySelectorAll('.partido-arrastrable'), function (item) {
+                return item.getAttribute('data-id') || '';
+            }).filter(Boolean).join(',');
+            var cuerpo = new URLSearchParams();
+            cuerpo.set('csrf', token.value);
+            cuerpo.set('accion', 'ordenar');
+            cuerpo.set('ajax', '1');
+            cuerpo.set('ids', ids);
+            fetch('partidos.php', { method: 'POST', body: cuerpo, headers: { 'Accept': 'application/json' } })
+                .then(function (respuesta) { return respuesta.json(); })
+                .then(function (dato) {
+                    if (!dato.ok) {
+                        window.alert(dato.mensaje || 'No se pudo guardar el orden.');
+                        window.location.reload();
+                    }
+                })
+                .catch(function () {
+                    window.alert('No se pudo guardar el orden.');
+                    window.location.reload();
+                });
+        }
+
+        var arrastre = null;
+        lista.querySelectorAll('.agarre').forEach(function (agarre) {
+            agarre.addEventListener('pointerdown', function (evento) {
+                if (evento.button !== 0) {
+                    return;
+                }
+                var fila = agarre.closest('.partido-arrastrable');
+                if (!fila) {
+                    return;
+                }
+                evento.preventDefault();
+                if (evento.isTrusted) {
+                    try {
+                        agarre.setPointerCapture(evento.pointerId);
+                    } catch (error) {}
+                }
+                arrastre = {
+                    fila: fila,
+                    siguiente: fila.nextSibling,
+                    pointerId: evento.pointerId
+                };
+                fila.classList.add('arrastrando');
+                fila.style.pointerEvents = 'none';
+            });
+            agarre.addEventListener('pointermove', function (evento) {
+                if (!arrastre || arrastre.pointerId !== evento.pointerId) {
+                    return;
+                }
+                if (evento.clientY < 72) {
+                    window.scrollBy(0, -16);
+                } else if (evento.clientY > window.innerHeight - 120) {
+                    window.scrollBy(0, 16);
+                }
+                var bajo = document.elementFromPoint(evento.clientX, evento.clientY);
+                if (!bajo) {
+                    return;
+                }
+                var referencia = bajo.closest('.partido-arrastrable');
+                if (!referencia || referencia === arrastre.fila || referencia.parentElement !== lista) {
+                    return;
+                }
+                var rect = referencia.getBoundingClientRect();
+                if (evento.clientY > rect.top + rect.height / 2) {
+                    lista.insertBefore(arrastre.fila, referencia.nextElementSibling);
+                } else {
+                    lista.insertBefore(arrastre.fila, referencia);
+                }
+            });
+            agarre.addEventListener('pointerup', function (evento) {
+                if (!arrastre || arrastre.pointerId !== evento.pointerId) {
+                    return;
+                }
+                var fila = arrastre.fila;
+                var siguiente = arrastre.siguiente;
+                fila.style.pointerEvents = '';
+                fila.classList.remove('arrastrando');
+                arrastre = null;
+                if (fila.nextSibling !== siguiente) {
+                    guardarOrden();
+                }
+            });
+            agarre.addEventListener('pointercancel', function (evento) {
+                if (!arrastre || arrastre.pointerId !== evento.pointerId) {
+                    return;
+                }
+                var fila = arrastre.fila;
+                fila.style.pointerEvents = '';
+                fila.classList.remove('arrastrando');
+                lista.insertBefore(fila, arrastre.siguiente);
+                arrastre = null;
+            });
         });
     })();
 </script>

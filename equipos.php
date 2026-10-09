@@ -24,6 +24,9 @@ function fila_equipo(array $club): void
         data-id="<?= (int) $club['id'] ?>"
         data-grupo="<?= e($grupo) ?>"
     >
+        <button class="agarre" type="button" draggable="false" aria-label="Mover equipo">
+            <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+        </button>
         <div class="min-w-0 flex-grow-1 overflow-hidden">
             <div class="fw-semibold text-truncate"><?= e((string) $club['nombre']) ?></div>
             <div class="small text-secondary"><?= e((string) $club['nombre_corto']) ?></div>
@@ -254,7 +257,7 @@ if ($equipo !== null) {
         </div>
     </div>
     <div class="modal fade" id="modal-editar" tabindex="-1" aria-labelledby="modal-editar-titulo" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
             <form method="post" class="modal-content">
                 <?= campo_csrf() ?>
                 <input type="hidden" name="accion" value="editar">
@@ -362,7 +365,7 @@ uksort($bloques, static function (string $a, string $b): int {
         </div>
         <div>
             <?php if ($bloques !== []): ?>
-                <div class="row row-cols-2 g-3">
+                <div class="row row-cols-1 row-cols-md-2 g-3">
                     <?php foreach ($bloques as $nombreGrupo => $clubes): ?>
                         <div class="col">
                             <div class="card h-100">
@@ -382,7 +385,7 @@ uksort($bloques, static function (string $a, string $b): int {
     </div>
 <?php endif; ?>
 <div class="modal fade" id="modal-equipo" tabindex="-1" aria-labelledby="modal-equipo-titulo" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
         <form method="post" class="modal-content">
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="crear">
@@ -417,7 +420,7 @@ uksort($bloques, static function (string $a, string $b): int {
     </div>
 </div>
 <div class="modal fade" id="modal-editar-equipo" tabindex="-1" aria-labelledby="modal-editar-equipo-titulo" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
         <form method="post" class="modal-content">
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="guardar-equipo">
@@ -480,6 +483,67 @@ uksort($bloques, static function (string $a, string $b): int {
             });
         }
 
+        function idsDe(lista) {
+            return Array.prototype.map.call(lista.querySelectorAll('.equipo-arrastrable'), function (item) {
+                return item.getAttribute('data-id') || '';
+            }).filter(Boolean).join(',');
+        }
+
+        function colocar(fila, zona, referencia, clientY) {
+            if (referencia && referencia !== fila && referencia.parentElement === zona) {
+                var rect = referencia.getBoundingClientRect();
+                if (clientY > rect.top + rect.height / 2) {
+                    zona.insertBefore(fila, referencia.nextElementSibling);
+                } else {
+                    zona.insertBefore(fila, referencia);
+                }
+                return true;
+            }
+            if (fila.parentElement !== zona) {
+                var vacio = zona.querySelector('.zona-vacia');
+                if (vacio) {
+                    zona.insertBefore(fila, vacio);
+                } else {
+                    zona.appendChild(fila);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        function guardarMovimiento(fila, origen, zona) {
+            var grupo = zona.getAttribute('data-grupo') || '';
+            var cuerpo = new URLSearchParams();
+            cuerpo.set('csrf', token.value);
+            cuerpo.set('accion', 'mover-grupo');
+            cuerpo.set('ajax', '1');
+            cuerpo.set('grupo', grupo);
+            cuerpo.set('ids', idsDe(zona));
+            if (origen !== zona) {
+                cuerpo.set('grupo_origen', origen.getAttribute('data-grupo') || '');
+                cuerpo.set('ids_origen', idsDe(origen));
+            }
+            fetch('equipos.php', { method: 'POST', body: cuerpo, headers: { 'Accept': 'application/json' } })
+                .then(function (respuesta) { return respuesta.json(); })
+                .then(function (dato) {
+                    if (!dato.ok) {
+                        window.alert(dato.mensaje || 'No se pudo mover.');
+                        window.location.reload();
+                        return;
+                    }
+                    fila.setAttribute('data-grupo', grupo);
+                    var boton = fila.querySelector('[data-bs-target="#modal-editar-equipo"]');
+                    if (boton) {
+                        boton.setAttribute('data-grupo', grupo);
+                    }
+                    pintarVacios();
+                })
+                .catch(function () {
+                    window.alert('No se pudo mover.');
+                    window.location.reload();
+                });
+        }
+
         document.querySelectorAll('.equipo-arrastrable').forEach(function (fila) {
             fila.addEventListener('dragstart', function (evento) {
                 if (evento.target.closest('a, button')) {
@@ -514,64 +578,99 @@ uksort($bloques, static function (string $a, string $b): int {
                 zona.classList.remove('soltando');
                 var id = evento.dataTransfer.getData('text/plain');
                 var fila = document.querySelector('.equipo-arrastrable[data-id="' + id + '"]');
-                var grupo = zona.getAttribute('data-grupo') || '';
                 if (!fila) {
                     return;
                 }
                 var origen = fila.parentElement;
-                var grupoOrigen = origen.getAttribute('data-grupo') || '';
                 var referencia = evento.target.closest('.equipo-arrastrable');
-                if (referencia && referencia !== fila && referencia.parentElement === zona) {
-                    var rect = referencia.getBoundingClientRect();
-                    if (evento.clientY > rect.top + rect.height / 2) {
-                        zona.insertBefore(fila, referencia.nextElementSibling);
-                    } else {
-                        zona.insertBefore(fila, referencia);
-                    }
-                } else if (origen !== zona) {
-                    var vacio = zona.querySelector('.zona-vacia');
-                    if (vacio) {
-                        zona.insertBefore(fila, vacio);
-                    } else {
-                        zona.appendChild(fila);
-                    }
-                } else {
+                if (!colocar(fila, zona, referencia, evento.clientY)) {
                     return;
                 }
-                function idsDe(lista) {
-                    return Array.prototype.map.call(lista.querySelectorAll('.equipo-arrastrable'), function (item) {
-                        return item.getAttribute('data-id') || '';
-                    }).filter(Boolean).join(',');
+                guardarMovimiento(fila, origen, zona);
+            });
+        });
+
+        var arrastre = null;
+        document.querySelectorAll('.equipo-arrastrable .agarre').forEach(function (agarre) {
+            agarre.addEventListener('pointerdown', function (evento) {
+                if (evento.button !== 0) {
+                    return;
                 }
-                var cuerpo = new URLSearchParams();
-                cuerpo.set('csrf', token.value);
-                cuerpo.set('accion', 'mover-grupo');
-                cuerpo.set('ajax', '1');
-                cuerpo.set('grupo', grupo);
-                cuerpo.set('ids', idsDe(zona));
-                if (origen !== zona) {
-                    cuerpo.set('grupo_origen', grupoOrigen);
-                    cuerpo.set('ids_origen', idsDe(origen));
+                var fila = agarre.closest('.equipo-arrastrable');
+                if (!fila) {
+                    return;
                 }
-                fetch('equipos.php', { method: 'POST', body: cuerpo, headers: { 'Accept': 'application/json' } })
-                    .then(function (respuesta) { return respuesta.json(); })
-                    .then(function (dato) {
-                        if (!dato.ok) {
-                            window.alert(dato.mensaje || 'No se pudo mover.');
-                            window.location.reload();
-                            return;
-                        }
-                        fila.setAttribute('data-grupo', grupo);
-                        var boton = fila.querySelector('[data-bs-target="#modal-editar-equipo"]');
-                        if (boton) {
-                            boton.setAttribute('data-grupo', grupo);
-                        }
-                        pintarVacios();
-                    })
-                    .catch(function () {
-                        window.alert('No se pudo mover.');
-                        window.location.reload();
-                    });
+                evento.preventDefault();
+                if (evento.isTrusted) {
+                    try {
+                        agarre.setPointerCapture(evento.pointerId);
+                    } catch (error) {}
+                }
+                arrastre = {
+                    fila: fila,
+                    origen: fila.parentElement,
+                    siguiente: fila.nextSibling,
+                    pointerId: evento.pointerId
+                };
+                fila.classList.add('arrastrando');
+                fila.style.pointerEvents = 'none';
+            });
+            agarre.addEventListener('pointermove', function (evento) {
+                if (!arrastre || arrastre.pointerId !== evento.pointerId) {
+                    return;
+                }
+                if (evento.clientY < 72) {
+                    window.scrollBy(0, -16);
+                } else if (evento.clientY > window.innerHeight - 120) {
+                    window.scrollBy(0, 16);
+                }
+                var bajo = document.elementFromPoint(evento.clientX, evento.clientY);
+                document.querySelectorAll('.zona-grupo.soltando').forEach(function (zona) {
+                    zona.classList.remove('soltando');
+                });
+                if (!bajo) {
+                    return;
+                }
+                var zona = bajo.closest('.zona-grupo');
+                if (!zona) {
+                    return;
+                }
+                zona.classList.add('soltando');
+                colocar(arrastre.fila, zona, bajo.closest('.equipo-arrastrable'), evento.clientY);
+            });
+            agarre.addEventListener('pointerup', function (evento) {
+                if (!arrastre || arrastre.pointerId !== evento.pointerId) {
+                    return;
+                }
+                var fila = arrastre.fila;
+                var origen = arrastre.origen;
+                var siguiente = arrastre.siguiente;
+                var zona = fila.parentElement;
+                fila.style.pointerEvents = '';
+                fila.classList.remove('arrastrando');
+                document.querySelectorAll('.zona-grupo.soltando').forEach(function (item) {
+                    item.classList.remove('soltando');
+                });
+                arrastre = null;
+                if (!zona || !zona.classList.contains('zona-grupo') || (zona === origen && fila.nextSibling === siguiente)) {
+                    if (origen) {
+                        origen.insertBefore(fila, siguiente);
+                    }
+                    return;
+                }
+                guardarMovimiento(fila, origen, zona);
+            });
+            agarre.addEventListener('pointercancel', function (evento) {
+                if (!arrastre || arrastre.pointerId !== evento.pointerId) {
+                    return;
+                }
+                var fila = arrastre.fila;
+                fila.style.pointerEvents = '';
+                fila.classList.remove('arrastrando');
+                if (arrastre.origen) {
+                    arrastre.origen.insertBefore(fila, arrastre.siguiente);
+                }
+                arrastre = null;
             });
         });
     })();

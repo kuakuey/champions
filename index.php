@@ -80,7 +80,7 @@ require __DIR__ . '/includes/header.php';
                         <?php if ($nombreGrupo !== ''): ?>
                             <h3 class="h6 text-secondary px-3 pt-3 mb-2"><?= e($nombreGrupo) ?></h3>
                         <?php endif; ?>
-                        <table class="table table-striped table-hover tabla-liga align-middle mb-0">
+                        <table class="table table-striped table-hover tabla-liga tabla-puntajes align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -133,6 +133,7 @@ require __DIR__ . '/includes/header.php';
                 <?php if ($goleadores === []): ?>
                     <p class="text-secondary p-3 mb-0">Todavía no hay goles cargados.</p>
                 <?php else: ?>
+                    <div class="tabla-movil">
                     <table class="table table-hover tabla-liga align-middle mb-0">
                         <thead>
                             <tr>
@@ -153,6 +154,7 @@ require __DIR__ . '/includes/header.php';
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    </div>
                 <?php endif; ?>
             </div>
         </section>
