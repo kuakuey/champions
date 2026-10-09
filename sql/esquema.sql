@@ -122,8 +122,7 @@ CREATE TABLE partidos (
     ON UPDATE CASCADE,
   CONSTRAINT fk_partidos_visitante
     FOREIGN KEY (visitante_id) REFERENCES equipos (id)
-    ON UPDATE CASCADE,
-  CONSTRAINT chk_partidos_rivales CHECK (local_id <> visitante_id)
+    ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
