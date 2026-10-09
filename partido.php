@@ -62,7 +62,7 @@ $descripcion = texto_partido($partido);
 require __DIR__ . '/includes/header.php';
 
 $nombreEvento = static function (array $evento): string {
-    $nombre = trim((string) ($evento['nombre'] ?? '') . ' ' . (string) ($evento['apellido'] ?? ''));
+    $nombre = nombre_persona($evento);
 
     return $nombre !== '' ? $nombre : 'Sin jugador';
 };
@@ -124,7 +124,7 @@ $nombreEvento = static function (array $evento): string {
                             <?php foreach ($locales as $jugador): ?>
                                 <option value="<?= (int) $jugador['id'] ?>">
                                     <?= $jugador['dorsal'] === null ? '' : (int) $jugador['dorsal'] . ' · ' ?>
-                                    <?= e((string) $jugador['nombre'] . ' ' . (string) $jugador['apellido']) ?>
+                                    <?= e(nombre_persona($jugador)) ?>
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>
@@ -132,7 +132,7 @@ $nombreEvento = static function (array $evento): string {
                             <?php foreach ($visitas as $jugador): ?>
                                 <option value="<?= (int) $jugador['id'] ?>">
                                     <?= $jugador['dorsal'] === null ? '' : (int) $jugador['dorsal'] . ' · ' ?>
-                                    <?= e((string) $jugador['nombre'] . ' ' . (string) $jugador['apellido']) ?>
+                                    <?= e(nombre_persona($jugador)) ?>
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>

@@ -29,7 +29,7 @@ function fila_equipo(array $club): void
         </button>
         <div class="min-w-0 flex-grow-1 overflow-hidden">
             <div class="fw-semibold text-truncate"><?= e((string) $club['nombre']) ?></div>
-            <div class="small text-secondary"><?= e((string) $club['nombre_corto']) ?></div>
+            <div class="small text-secondary"><?= e((string) $club['nombre_corto']) ?> · <?= (int) ($club['jugadores'] ?? 0) ?></div>
         </div>
         <div class="d-flex gap-2 flex-shrink-0">
             <button
@@ -136,7 +136,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $jugadorId,
                     $volver,
                     (string) ($_POST['nombre'] ?? ''),
-                    (string) ($_POST['apellido'] ?? ''),
                     $dorsal
                 );
                 poner_aviso('success', 'Jugador actualizado.');
@@ -144,7 +143,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 crear_jugador(
                     $volver,
                     (string) ($_POST['nombre'] ?? ''),
-                    (string) ($_POST['apellido'] ?? ''),
                     $dorsal
                 );
                 poner_aviso('success', 'Jugador agregado.');
@@ -186,10 +184,23 @@ require __DIR__ . '/includes/header.php';
 
 if ($equipo !== null) {
     $jugadores = listar_jugadores((int) $equipo['id'], false);
+    $conteos = contar_jugadores_equipos();
     ?>
     <p class="mb-2"><a href="<?= e(url_public('equipos.php')) ?>">Volver a equipos</a></p>
     <h1 class="h3 mb-1"><?= e((string) $equipo['nombre']) ?></h1>
-    <p class="text-secondary mb-4"><?= e((string) $equipo['nombre_corto']) ?><?php if (!empty($equipo['grupo'])): ?> · <?= e((string) $equipo['grupo']) ?><?php endif; ?></p>
+    <p class="text-secondary mb-3"><?= e((string) $equipo['nombre_corto']) ?><?php if (!empty($equipo['grupo'])): ?> · <?= e((string) $equipo['grupo']) ?><?php endif; ?></p>
+    <div class="mb-4" aria-label="Jugadores por equipo">
+        <p class="fw-semibold mb-2">Jugadores por equipo</p>
+        <div class="d-flex flex-wrap gap-2">
+            <?php foreach ($conteos as $fila): ?>
+                <?php $esActual = (int) $fila['id'] === (int) $equipo['id']; ?>
+                <span class="badge rounded-pill <?= $esActual ? 'text-bg-success' : 'text-bg-light border text-body' ?> fw-normal">
+                    <?= e((string) $fila['nombre_corto']) ?>
+                    <strong><?= (int) $fila['total'] ?></strong>
+                </span>
+            <?php endforeach; ?>
+        </div>
+    </div>
     <div class="row g-4">
         <div class="col-lg-4">
             <form method="post" class="card">
@@ -199,12 +210,8 @@ if ($equipo !== null) {
                     <input type="hidden" name="accion" value="jugador">
                     <input type="hidden" name="equipo_id" value="<?= (int) $equipo['id'] ?>">
                     <div class="mb-3">
-                        <label class="form-label" for="nombre">Nombre</label>
-                        <input class="form-control" id="nombre" name="nombre" required maxlength="80">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="apellido">Apellido</label>
-                        <input class="form-control" id="apellido" name="apellido" required maxlength="80">
+                        <label class="form-label" for="nombre">Nombre completo</label>
+                        <input class="form-control" id="nombre" name="nombre" required maxlength="120">
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="dorsal">Dorsal</label>
@@ -231,7 +238,7 @@ if ($equipo !== null) {
                         <?php foreach ($jugadores as $jugador): ?>
                             <?php $fila = (int) $jugador['id']; ?>
                             <tr>
-                                <td class="fw-semibold"><?= e((string) $jugador['nombre'] . ' ' . (string) $jugador['apellido']) ?></td>
+                                <td class="fw-semibold"><?= e(nombre_persona($jugador)) ?></td>
                                 <td><?= $jugador['dorsal'] === null ? '—' : (int) $jugador['dorsal'] ?></td>
                                 <td class="text-end">
                                     <div class="d-inline-flex gap-2">
@@ -241,8 +248,7 @@ if ($equipo !== null) {
                                             data-bs-toggle="modal"
                                             data-bs-target="#modal-editar"
                                             data-id="<?= $fila ?>"
-                                            data-nombre="<?= e((string) $jugador['nombre']) ?>"
-                                            data-apellido="<?= e((string) $jugador['apellido']) ?>"
+                                            data-nombre="<?= e(nombre_persona($jugador)) ?>"
                                             data-dorsal="<?= $jugador['dorsal'] === null ? '' : (int) $jugador['dorsal'] ?>"
                                         >Editar</button>
                                         <form method="post" onsubmit="return confirm('¿Quitar a este jugador?');">
@@ -274,12 +280,8 @@ if ($equipo !== null) {
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label" for="editar-nombre">Nombre</label>
-                        <input class="form-control" id="editar-nombre" name="nombre" required maxlength="80">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="editar-apellido">Apellido</label>
-                        <input class="form-control" id="editar-apellido" name="apellido" required maxlength="80">
+                        <label class="form-label" for="editar-nombre">Nombre completo</label>
+                        <input class="form-control" id="editar-nombre" name="nombre" required maxlength="120">
                     </div>
                     <div class="mb-0">
                         <label class="form-label" for="editar-dorsal">Dorsal</label>
@@ -301,7 +303,6 @@ if ($equipo !== null) {
             }
             document.getElementById('editar-id').value = boton.getAttribute('data-id') || '';
             document.getElementById('editar-nombre').value = boton.getAttribute('data-nombre') || '';
-            document.getElementById('editar-apellido').value = boton.getAttribute('data-apellido') || '';
             document.getElementById('editar-dorsal').value = boton.getAttribute('data-dorsal') || '';
         });
     </script>
@@ -313,6 +314,10 @@ if ($equipo !== null) {
 asegurar_grupos_base();
 $equipos = listar_equipos(false);
 $grupos = listar_grupos();
+$conteoPorEquipo = [];
+foreach (contar_jugadores_equipos() as $fila) {
+    $conteoPorEquipo[(int) $fila['id']] = (int) $fila['total'];
+}
 $sinAsignar = [];
 $bloques = [];
 foreach ($grupos as $grupo) {
@@ -323,6 +328,7 @@ foreach ($grupos as $grupo) {
     $bloques[$nombre] = [];
 }
 foreach ($equipos as $club) {
+    $club['jugadores'] = $conteoPorEquipo[(int) $club['id']] ?? 0;
     $clave = trim((string) ($club['grupo'] ?? ''));
     if ($clave === '' || $clave === GRUPO_SIN_ASIGNAR) {
         $sinAsignar[] = $club;

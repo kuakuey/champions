@@ -1475,13 +1475,31 @@ function guardar_orden_grupo(string $grupo, array $ids): void
     }
 }
 
-function crear_jugador(int $equipoId, string $nombre, string $apellido, ?int $dorsal): int
+function nombre_persona(array $fila): string
+{
+    return trim((string) ($fila['nombre'] ?? '') . ' ' . (string) ($fila['apellido'] ?? ''));
+}
+
+/**
+ * @return array<int, array<string, mixed>>
+ */
+function contar_jugadores_equipos(): array
+{
+    return consultar(
+        'SELECT e.id, e.nombre, e.nombre_corto, COUNT(j.id) AS total
+         FROM equipos e
+         LEFT JOIN jugadores j ON j.equipo_id = e.id
+         GROUP BY e.id, e.nombre, e.nombre_corto
+         ORDER BY e.nombre ASC'
+    );
+}
+
+function crear_jugador(int $equipoId, string $nombre, ?int $dorsal): int
 {
     if (obtener_equipo($equipoId) === null) {
         throw new RuntimeException('Elige un equipo.');
     }
-    $nombre = texto_limpio($nombre, 80, 'El nombre');
-    $apellido = texto_limpio($apellido, 80, 'El apellido');
+    $nombre = texto_limpio($nombre, 120, 'El nombre');
     if ($dorsal !== null && ($dorsal < 1 || $dorsal > 99)) {
         throw new RuntimeException('El dorsal debe estar entre 1 y 99.');
     }
@@ -1498,7 +1516,7 @@ function crear_jugador(int $equipoId, string $nombre, string $apellido, ?int $do
         [
             'equipo' => $equipoId,
             'nombre' => $nombre,
-            'apellido' => $apellido,
+            'apellido' => '',
             'dorsal' => $dorsal,
         ]
     );
@@ -1506,14 +1524,13 @@ function crear_jugador(int $equipoId, string $nombre, string $apellido, ?int $do
     return (int) db()->lastInsertId();
 }
 
-function actualizar_jugador(int $jugadorId, int $equipoId, string $nombre, string $apellido, ?int $dorsal): void
+function actualizar_jugador(int $jugadorId, int $equipoId, string $nombre, ?int $dorsal): void
 {
     $jugador = obtener_jugador($jugadorId);
     if ($jugador === null || (int) $jugador['equipo_id'] !== $equipoId) {
         throw new RuntimeException('No encontramos ese jugador en el equipo.');
     }
-    $nombre = texto_limpio($nombre, 80, 'El nombre');
-    $apellido = texto_limpio($apellido, 80, 'El apellido');
+    $nombre = texto_limpio($nombre, 120, 'El nombre');
     if ($dorsal !== null && ($dorsal < 1 || $dorsal > 99)) {
         throw new RuntimeException('El dorsal debe estar entre 1 y 99.');
     }
@@ -1533,7 +1550,7 @@ function actualizar_jugador(int $jugadorId, int $equipoId, string $nombre, strin
          WHERE id = :id AND equipo_id = :equipo',
         [
             'nombre' => $nombre,
-            'apellido' => $apellido,
+            'apellido' => '',
             'dorsal' => $dorsal,
             'id' => $jugadorId,
             'equipo' => $equipoId,

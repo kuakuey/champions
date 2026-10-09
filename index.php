@@ -153,7 +153,7 @@ require __DIR__ . '/includes/header.php';
                             <?php foreach ($goleadores as $indice => $jugador): ?>
                                 <tr>
                                     <td class="<?= $indice < 3 ? 'posicion-top' : '' ?>"><?= $indice + 1 ?></td>
-                                    <td><?= e($jugador['nombre'] . ' ' . $jugador['apellido']) ?></td>
+                                    <td><?= e(nombre_persona($jugador)) ?></td>
                                     <td><?= e($jugador['nombre_corto']) ?></td>
                                     <td class="fw-bold"><?= (int) $jugador['total'] ?></td>
                                 </tr>
