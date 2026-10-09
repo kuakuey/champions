@@ -1,10 +1,8 @@
 <?php
 /**
- * Conexión PDO a MySQL/MariaDB.
- *
- * En este XAMPP la clave de root es "root", la misma de phpMyAdmin.
- * Si el tuyo no tiene clave, deja DB_PASS vacío.
- * Hosting compartido: cambia DB_HOST, DB_NAME, DB_USER y DB_PASS.
+ * Conexión PDO a MySQL.
+ * En cPanel solo se cambian las cuatro credenciales de abajo.
+ * Salen de cPanel → Bases de datos MySQL.
  */
 
 declare(strict_types=1);
@@ -14,11 +12,22 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'db.php') {
     exit('Acceso denegado.');
 }
 
-const DB_HOST = '127.0.0.1';
-const DB_NAME = 'campeonato';
-const DB_USER = 'root';
-const DB_PASS = 'root';
-const DB_CHARSET = 'utf8mb4';
+$servidor = strtolower((string) ($_SERVER['SERVER_NAME'] ?? ''));
+$enLocal = $servidor === 'localhost' || $servidor === '127.0.0.1';
+
+if ($enLocal) {
+    define('DB_HOST', '127.0.0.1');
+    define('DB_NAME', 'campeonato');
+    define('DB_USER', 'root');
+    define('DB_PASS', 'root');
+} else {
+    define('DB_HOST', 'localhost');
+    define('DB_NAME', 'iglesiacasadeavi_champions');
+    define('DB_USER', 'iglesiacasadeavi_kuakuey');
+    define('DB_PASS', '');
+}
+
+define('DB_CHARSET', 'utf8mb4');
 
 /**
  * Devuelve una única instancia de PDO para toda la petición.
